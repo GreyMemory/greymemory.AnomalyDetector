@@ -1,0 +1,1 @@
+java -XX:+UseG1GC -Xms1012m -Xmx2012m -jar ./dist/greymemory.AnomalyDetector.jar  /home/equalit/rrd/http_response_ratio.csv

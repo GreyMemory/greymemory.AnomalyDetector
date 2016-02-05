@@ -57,7 +57,7 @@ abstract public class DataSource extends Thread {
             result.timestamp = Long.parseLong(stime);
 
             result.date = new java.util.Date((long)result.timestamp*1000);
-            Calendar c = Calendar.getInstance();
+            Calendar c = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             c.setTime(result.date);
             result.data = new double[parts.length-1+2];
 
