@@ -12,4 +12,6 @@ public class Anomaly {
     public DataSample sample;
     public double anomaly_rate;
     public boolean start;
+    
+    
 }

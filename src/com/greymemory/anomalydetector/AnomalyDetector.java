@@ -27,9 +27,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.Locale;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.TimeZone;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.mail.MessagingException;
@@ -145,6 +147,8 @@ training_period = 5803.479980
     }
 
     public void monitor(){
+        
+      
         System.out.println("Output file: " + config.getProperty("output_file"));
         System.out.println("Monitoring file: " + config.getProperty("input_file"));
         
@@ -199,8 +203,37 @@ training_period = 5803.479980
     
     public void run(String[] args) {
         
+        /*
+        Calendar c = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        c.setTimeInMillis(1450389361*1000);
+        final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        //sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        final String utcTime = sdf.format(c.getTime());
+*/
+       /* 
+        TimeZone timeZone = TimeZone.getTimeZone("UTC");
+        Calendar c = Calendar.getInstance(timeZone);
+        c.setTimeInMillis((long)1450389361*1000);
+        SimpleDateFormat sdf = 
+               new SimpleDateFormat("EE MMM dd HH:mm:ss zzz yyyy", Locale.US);
+        sdf.setTimeZone(timeZone);
+        String utcTime = sdf.format(c.getTime());
+*/
+        /*
+        DataSample sample = new DataSample();
+        sample.date = new Date(1450389361*1000);
+        String s = sample.get_date_UTC();
+        int i = 0;*/
+ /*       
+        Date date = new Date();
+        date.setTime(1453425781*1000);
+        final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        final String utcTime = sdf.format(date);
+ */  
+        
         System.out.println("Copyright (c) 2015 Mindmick Corp.");
-        System.out.println("Anomaly Detector.");
+        System.out.println("Anomaly Detector. version 1.1");
       
         read_config();
         if(args.length > 0){
@@ -321,9 +354,9 @@ training_period = 5803.479980
         
         String rate = Double.toString((int)(anomaly.anomaly_rate*100)/100.0);
         String title = "GreyMemory: Anomaly detected(HTTP Responce): " +
-                anomaly.sample.date.toString() + ", Rate:" + rate;
+                anomaly.sample.get_date_UTC() + ", Rate:" + rate;
         String message = "GreyMemory: Anomaly detected(HTTP responce).\n\n" +
-                "Timestmap: " + anomaly.sample.date.toString() + "\n\n" +
+                "Timestmap: " + anomaly.sample.get_date_UTC() + "\n\n" +
                 "Anomaly rate: " + rate;
         
         // do not send emails on events before the launch
@@ -391,7 +424,7 @@ training_period = 5803.479980
         */
         
         
-        System.out.println("GreyMemory: Anomaly detected(HTTP Responce): " + anomaly.sample.date.toString() + 
+        System.out.println("GreyMemory: Anomaly detected(HTTP Responce): " + anomaly.sample.get_date_UTC() + 
                 ", Rate:" + Double.toString((int)(anomaly.anomaly_rate*100)/100.0)
                  + (anomaly.start ? ", START" : ", STOP"));
         
@@ -439,7 +472,7 @@ training_period = 5803.479980
             root.put("dnet", "");
             root.put("channel", "HTTP_response");
             root.put("anomaly_rate", anomaly.anomaly_rate);
-            root.put("time_stamp", dateFormat.format(anomaly.sample.date));
+            root.put("time_stamp", anomaly.sample.timestamp);
             
             send_zmq_message(root.toString());
             
@@ -450,3 +483,6 @@ training_period = 5803.479980
     
     
 }
+/*
+nohup sh anomaly_detector.sh &
+*/

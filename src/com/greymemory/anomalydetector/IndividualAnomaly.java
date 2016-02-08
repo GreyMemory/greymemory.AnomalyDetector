@@ -179,7 +179,7 @@ public class IndividualAnomaly extends Individual implements DataConsumer  {
             writer_log = new BufferedWriter(new FileWriter(new File(log_file), true));
             PrintWriter o = new PrintWriter(writer_log);
             o.printf("%s, %d, %f, %f, %f, %f, %f\n", 
-                    sample.date.toString(),
+                    sample.get_date_UTC(),
                     sample.timestamp, 
                     //sample.date,
                     //sample.data[2], 
