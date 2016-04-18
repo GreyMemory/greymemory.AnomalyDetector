@@ -14,6 +14,11 @@ import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
+import java.util.*;
+import javax.mail.*;
+import javax.mail.internet.*;
+import javax.activation.*;
+
 /**
  *
  * @author amazhurin
@@ -105,4 +110,39 @@ public class GoogleMail {
         t.sendMessage(msg, msg.getAllRecipients());      
         t.close();
     }
+    
+    public static void Send_from_localhost(
+            String senderEmail, 
+            String recipientEmail, 
+            String ccEmail, 
+            String title, 
+            String message) throws AddressException, 
+            javax.mail.MessagingException {
+
+        // Assuming you are sending email from localhost
+        String host = "localhost";
+
+        // Get a Properties object
+        Properties properties = System.getProperties();
+        properties.setProperty("mail.smtp.host", host);
+
+        Session session = Session.getDefaultInstance(properties);
+
+        // -- Create a new message --
+        final MimeMessage msg = new MimeMessage(session);
+
+        // -- Set the FROM and TO fields --
+        msg.setFrom(new InternetAddress(senderEmail));
+        msg.addRecipient(Message.RecipientType.TO, new InternetAddress(recipientEmail));
+
+        if (ccEmail.length() > 0) {
+            msg.setRecipients(Message.RecipientType.CC, InternetAddress.parse(ccEmail, false));
+        }
+
+        msg.setSubject(title);
+        msg.setText(message, "utf-8");
+        msg.setSentDate(new Date());
+        Transport.send(msg);
+    }
+    
 }

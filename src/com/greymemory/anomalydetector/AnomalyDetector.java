@@ -339,8 +339,21 @@ training_period = 5803.479980
      * @param args the command line arguments
      */
     public static void main(String[] args)  {
-        AnomalyDetector detector = new AnomalyDetector();
-        detector.run(args);
+        
+        try {
+            GoogleMail.Send_from_localhost(
+                    //"greymemory@bothound.deflect.ca",
+                    "fedorpo@gmail.com",
+                    "mazhurin@gmail.com",
+                    "",
+                    "Test 444",
+                    "Test 444 from greymory"                    );
+            
+            //AnomalyDetector detector = new AnomalyDetector();
+            //detector.run(args);
+        } catch (MessagingException ex) {
+            System.out.println(ex.toString());
+        }
     }
 
     private boolean is_date_before_launch(Date date){
@@ -430,7 +443,7 @@ training_period = 5803.479980
         
         send_emails(anomaly);
         
-        send_to_vengeance(anomaly);
+        send_to_bothound(anomaly);
         
     }
     
@@ -458,7 +471,7 @@ training_period = 5803.479980
         }
     }
     
-    protected void send_to_vengeance(Anomaly anomaly){
+    protected void send_to_bothound(Anomaly anomaly){
         // do not send emails on events before the launch
         //if(is_date_before_launch(anomaly.sample.date))
         //    return;
@@ -473,6 +486,7 @@ training_period = 5803.479980
             root.put("channel", "HTTP_response");
             root.put("anomaly_rate", anomaly.anomaly_rate);
             root.put("time_stamp", anomaly.sample.timestamp);
+            root.put("date", anomaly.sample.get_date_UTC());
             
             send_zmq_message(root.toString());
             
