@@ -1,5 +1,5 @@
 /*
- * Copyright(c) 2015 Mindmick Corp. 
+ * Copyright(c) 2015 Anton Mazhurin 
  * 
  */
 
@@ -232,7 +232,7 @@ training_period = 5803.479980
         final String utcTime = sdf.format(date);
  */  
         
-        System.out.println("Copyright (c) 2015 Mindmick Corp.");
+        System.out.println("Copyright (c) 2015 Anton Mazhurin");
         System.out.println("Anomaly Detector. version 1.1");
       
         read_config();
