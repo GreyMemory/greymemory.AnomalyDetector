@@ -5,6 +5,10 @@
 
 package com.greymemory.anomalydetector;
 
+import com.greymemory.anomaly.DataSourceCSV;
+import com.greymemory.anomaly.AnomalyConsumer;
+import com.greymemory.anomaly.IndividualAnomaly;
+import com.greymemory.anomaly.Anomaly;
 import com.greymemory.evolution.Evolver;
 import com.greymemory.evolution.Gene;
 import com.greymemory.evolution.Individual;
@@ -20,6 +24,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import static java.lang.System.in;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -339,6 +344,17 @@ training_period = 5803.479980
      * @param args the command line arguments
      */
     public static void main(String[] args)  {
+
+        try {
+            ElasticSearch es = new ElasticSearch();
+            es.connect("https://opsdash.deflect.ca",
+                9200, "", "");
+            es.test();
+            es.disconnect();
+        } catch (UnknownHostException ex) {
+            Logger.getLogger(AnomalyDetector.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
         
         try {
             GoogleMail.Send_from_localhost(
