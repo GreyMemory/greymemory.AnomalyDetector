@@ -345,15 +345,11 @@ training_period = 5803.479980
      */
     public static void main(String[] args)  {
 
-        try {
-            ElasticSearch es = new ElasticSearch();
-            es.connect("https://opsdash.deflect.ca",
-                9200, "", "");
-            es.test();
-            es.disconnect();
-        } catch (UnknownHostException ex) {
-            Logger.getLogger(AnomalyDetector.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        ElasticSearch es = new ElasticSearch();
+        es.connect("https://opsdash.deflect.ca",
+            9200, "edge", "spinbolnorv7");
+        es.test();
+        es.disconnect();
 
         
         try {

@@ -4,25 +4,32 @@
  */
 package com.greymemory.anomalydetector;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import io.searchbox.client.JestClient;
+import io.searchbox.client.JestClientFactory;
+import io.searchbox.client.config.HttpClientConfig;
 
 /**
  *
  * @author anton
  */
 public class ElasticSearch {
-    private TransportClient client;
     
     public ElasticSearch(){
     }
     
-    public void connect(String host, int port, String user, String password) throws UnknownHostException {
+    public void connect(String host, int port, String user, String password)  {
+        
+        JestClientFactory factory = new JestClientFactory();
+        factory.setHttpClientConfig(
+            new HttpClientConfig.Builder(host + ":" + port)
+                .defaultCredentials(user, password)
+                .build()
+        );
+        
+        JestClient client = factory.getObject();
+        
+        
+        /*
         try{
             Settings settings;
             
@@ -37,6 +44,7 @@ public class ElasticSearch {
         } catch (Exception ex) {
             Logger.getLogger(AnomalyDetector.class.getName()).log(Level.SEVERE, null, ex);
         }
+        */
         
 /*        
         TransportClient client = TransportClient.builder()
@@ -63,7 +71,6 @@ public class ElasticSearch {
     }
     
     public void disconnect(){
-        client.close();        
     }
     
     void test(){
