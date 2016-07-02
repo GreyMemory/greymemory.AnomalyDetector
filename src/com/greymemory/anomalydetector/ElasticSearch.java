@@ -4,15 +4,30 @@
  */
 package com.greymemory.anomalydetector;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import io.searchbox.client.JestClient;
 import io.searchbox.client.JestClientFactory;
+import io.searchbox.client.JestResult;
 import io.searchbox.client.config.HttpClientConfig;
+import io.searchbox.core.Search;
+import io.searchbox.indices.IndicesExists;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.Date;
+import java.util.TimeZone;
 
 /**
  *
  * @author anton
  */
 public class ElasticSearch {
+    
+    private JestClient client;
     
     public ElasticSearch(){
     }
@@ -21,63 +36,156 @@ public class ElasticSearch {
         
         JestClientFactory factory = new JestClientFactory();
         factory.setHttpClientConfig(
-            new HttpClientConfig.Builder(host + ":" + port)
+            new HttpClientConfig.Builder(host/* + ":" + port*/)
                 .defaultCredentials(user, password)
                 .build()
         );
         
-        JestClient client = factory.getObject();
-        
-        
-        /*
-        try{
-            Settings settings;
-            
-            settings = Settings.builder()
-                .put("client.transport.sniff", true)
-                //.put("cluster.name", "my-cluster").build()
-                    .build();
-            
-            client = TransportClient.builder().settings(settings).build()
-                    .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));                
-            
-        } catch (Exception ex) {
-            Logger.getLogger(AnomalyDetector.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        */
-        
-/*        
-        TransportClient client = TransportClient.builder()
-            .settings(Settings.builder().build())
-            .build()
-            .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
-
-        String token = basicAuthHeaderValue(user, new SecuredString("changeme".toCharArray()));
-
-        client.prepareSearch().putHeader("Authorization", token).get();
-
-
-
-
-        client = TransportClient.builder().build()
-            .addTransportAddress(new InetSocketTransportAddress(
-                    InetAddress.getByName(host), port));
-        
-   */     
-
-//        client = TransportClient.builder().build()
-//            .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
-
+        client = factory.getObject();
     }
     
     public void disconnect(){
     }
     
-    void test(){
+    float get_http_response_rate(String target_host, Date date, int num_minutes){
         
+        DateFormat df = new SimpleDateFormat("yyyy.MM.dd");
+        String indexDate = df.format(date);
+
+        DateFormat df1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.000'Z'");
+        String queryDate = df1.format(date);
+
+        String querySuccessful = 
+
+            "{" +
+            "       \"query\": {" +
+            "	\"filtered\": {" +
+            "		\"query\": {" +
+            "			\"query_string\": {" +
+            "				\"query\": \"client_request_host : *"+target_host+" AND (http_response_code: 2* or http_response_code: 3*)\"," +
+            "				\"analyze_wildcard\": true "+
+            "			} "+
+            "		}, "+
+            "		\"filter\": {" +
+            "			\"bool\": {"+ 
+            "				\"must\": [ "+
+            "				{" +
+            "					\"query\": {" +
+            "						\"match\": {" +
+            "							\"dnet\": {" +
+            "								\"query\": \"deflect1\", "+
+            "								\"type\": \"phrase\" "+
+            "							} "+
+            "						} "+
+            "					} "+
+            "				},"+
+            "				{" +
+            "					\"range\": {" +
+            "						\"@timestamp\": {" +
+                
+            "							\"gte\": \"" + queryDate + "||-1m" + "\", "+
+            "							\"lte\": \"" + queryDate + "\" "+
+                
+            //"                                                     \"gte\": \"now-1m" + "\", "+
+            //"							\"lte\": \"now\" "+
+
+                "						} "+
+            "					} "+
+            "				}], "+
+            "				\"must_not\": [] "+
+            "			} "+
+            "		} "+
+            "	} "+
+            "} "+
+             "}";
+
+        Search searchSuccessful = new Search.Builder(querySuccessful)
+                .addIndex("deflect.log-"+indexDate).addType("deflect_access")
+                .build();
+
+        String queryTotal = 
+            "{ \"query\": { "+
+            "	\"filtered\": { "+
+            "		\"query\": {" +
+            "			\"query_string\": {" +
+            "				\"query\": \"client_request_host : *"+target_host+"\"," +
+            "				\"analyze_wildcard\": true "+
+            "			} "+
+            "		}, "+
+                
+            "		\"filter\": { "+
+            "			\"bool\": { "+
+            "				\"must\": [ "+
+            "                { "+
+            "                	\"query\": { "+
+            "                		\"match\": { "+
+            "                			\"dnet\": { "+
+            "                				\"query\": \"deflect1\", "+
+            "                				\"type\": \"phrase\" "+
+            "                			} "+
+            "                		} "+
+            "                	} "+
+            "                }, "+
+            "                { "+
+            "                	\"range\": { "+
+            "                		\"@timestamp\": { "+
+"					\"gte\": \"" + queryDate + "||-1m" + "\", "+
+"					\"lte\": \"" + queryDate + "\" "+
+            "                		} "+
+            "                	} "+
+            "                } "+
+            "                ], "+
+            "                \"must_not\": [] "+
+            "            } "+
+            "        } "+
+            "    } "+
+            "} "+
+            "}";
+                
+
+        float rate = 0f;
+        int num_success = 0;
+        int num_total = 0;
         
+        Search searchTotal = new Search.Builder(queryTotal)
+                .addIndex("deflect.log-"+indexDate).addType("deflect_access")
+                .build();
+        try {
+            JestResult resultSuccessful = client.execute(searchSuccessful);
+//            System.out.println(resultSuccessful.getJsonString());
+            if (resultSuccessful.isSucceeded()){
+                JsonObject resultJson = resultSuccessful.getJsonObject();
+                JsonObject hits = resultJson.getAsJsonObject("hits");
+                if(hits != null){
+                    JsonPrimitive total = hits.getAsJsonPrimitive("total");
+                    if(total != null && total.isNumber())
+                        num_success = total.getAsInt();
+                }
+            }
+            
+            JestResult resultTotal = client.execute(searchTotal);
+//            System.out.println(resultTotal.getJsonString());
+            if (resultTotal.isSucceeded()){
+                JsonObject resultJson = resultTotal.getJsonObject();
+                JsonObject hits = resultJson.getAsJsonObject("hits");
+                if(hits != null){
+                    JsonPrimitive total = hits.getAsJsonPrimitive("total");
+                    if(total != null && total.isNumber())
+                        num_total = total.getAsInt();
+                }
+            }
+            if(num_total != 0){
+                rate = num_success*1.0f/num_total;
+            }
+            
+            
+        } catch (IOException ex) {
+            Logger.getLogger(ElasticSearch.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Exception ex) {
+            Logger.getLogger(ElasticSearch.class.getName()).log(Level.SEVERE, null, ex);
+        }
         
-        
+        return rate;
     }
     
 }

@@ -208,162 +208,40 @@ training_period = 5803.479980
     
     public void run(String[] args) {
         
-        /*
-        Calendar c = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-        c.setTimeInMillis(1450389361*1000);
-        final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        //sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-        final String utcTime = sdf.format(c.getTime());
-*/
-       /* 
-        TimeZone timeZone = TimeZone.getTimeZone("UTC");
-        Calendar c = Calendar.getInstance(timeZone);
-        c.setTimeInMillis((long)1450389361*1000);
-        SimpleDateFormat sdf = 
-               new SimpleDateFormat("EE MMM dd HH:mm:ss zzz yyyy", Locale.US);
-        sdf.setTimeZone(timeZone);
-        String utcTime = sdf.format(c.getTime());
-*/
-        /*
-        DataSample sample = new DataSample();
-        sample.date = new Date(1450389361*1000);
-        String s = sample.get_date_UTC();
-        int i = 0;*/
- /*       
-        Date date = new Date();
-        date.setTime(1453425781*1000);
-        final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-        final String utcTime = sdf.format(date);
- */  
-        
         System.out.println("Copyright (c) 2015 Anton Mazhurin");
         System.out.println("Anomaly Detector. version 1.1");
-      
+        
         read_config();
-        if(args.length > 0){
-           config.setProperty("input_file", args[0]);
-           System.out.println("Input file: " + args[0]);
-        }
         
-//        send_zmq_message("Grey Memory: testing zmq");
-        monitor();
+        //if(args.length > 0){
+        //   config.setProperty("input_file", args[0]);
+        //   System.out.println("Input file: " + args[0]);
+        //}
         
+        //send_zmq_message("Grey Memory: testing zmq");
+        //monitor();
+      
         
-        /*
-        Calendar calendar = new GregorianCalendar();
-        calendar.set(2015, 6-1, 15);
-        Date start_from = calendar.getTime();
-       
-       // Single run 
-        IndividualAnomaly individual = 
-                CreateHTTPResponceIndividual(
-                    //"./data/http_response_historical_last_month.csv",
-                    //"./data/http_response_historical.csv",
-                    "./data/http_response_ratio.csv",
-                    "./anomaly_log.csv", 
-                    start_from, -1);
+        ElasticSearch es = new ElasticSearch();
+        es.connect(config.getProperty("es_host"), 
+            Integer.parseInt(config.getProperty("es_port")),
+            config.getProperty("es_user"), config.getProperty("es_password"));
         
-        System.out.println("Calculating cost");
-        individual.addListener(this);
-        individual.threshold = 0.99;
-        individual.averate_anomaly = 3;
-        individual.calculate_cost();
-        System.out.println("Cost  = " + individual.get_cost());
-        System.out.println("Prediction rate  = " + individual.prediction_rate);
-        
-        System.out.println("Done.");
-        */
-        
-        /*
-  // EVOLUTION      
-        IndividualAnomaly individual = 
-                //CreateTrafficIndividual(
-                //   "./data/traffic_per_connection.csv",
-                //    "");
-                CreateHTTPResponceIndividual(
-                    "./data/http_response_historical_last_month.csv",
-                    "", 1300);
-        //individual.genome.get_gene("training_period").value = 2;
-        Evolver evolver = new Evolver();
-        Individual best = evolver.Evolve(individual);
-       */
-        
-        /*
-        CSVMerger merger = new CSVMerger();
-        merger.File1DividedFile2(
-                "./data/chhost3_TCPTRAFFIC.csv", 
-                "./data/chhost3_CONNECTIONS.csv",
-                "./data/traffic_per_connection.csv");
-        
-        */
-        //IndividualAnomaly individual = new IndividualAnomaly(
-        //        "./data/chhost3_TCPTRAFFIC.csv", "./data/chhost3_CONNECTIONS.csv");
-        
-        
-        /*
-        try {
-            data_source.Start(null);
-            
-            Thread.sleep(500);
-            FileWriter writer;
-            try {
-                for(int i = 0; i < 10000; i++){
-                    writer = new FileWriter("./data/chhost3_TCPTRAFFIC.csv", true);
-                    PrintWriter printWriter = new PrintWriter(writer);
-                    printWriter.printf("%d,%f\n", 1122345,(float)i);
-                    System.out.println("write = " + i);
-                    //Close writer
-                    writer.close();
-                    Thread.sleep(10);
-                }
-            } catch (IOException ex) {
-                Logger.getLogger(AnomalyDetector.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        } catch (InterruptedException ex) {
-            Logger.getLogger(AnomalyDetector.class.getName()).log(Level.SEVERE, null, ex);
-        }*/
-            /*
-        data_source.Start(null);
-        
-        System.out.println("Running...");
-        
-        try {
-            int in = System.in.read();
-        } catch (IOException ex) {
-            Logger.getLogger(AnomalyDetector.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        System.out.println("Stopping...");
-        System.out.println("Stopped");
-        data_source.Stop();
-        */
+        Date d = UTC_time.GetUTCdatetimeAsDate();
+        float rate = es.get_http_response_rate("bdsmovement.net", d, 1);
+        es.disconnect();
+
     }
 
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args)  {
-
-        ElasticSearch es = new ElasticSearch();
-        es.connect("https://opsdash.deflect.ca",
-            9200, "edge", "spinbolnorv7");
-        es.test();
-        es.disconnect();
-
         
         try {
-            GoogleMail.Send_from_localhost(
-                    //"greymemory@bothound.deflect.ca",
-                    "fedorpo@gmail.com",
-                    "mazhurin@gmail.com",
-                    "",
-                    "Test 444",
-                    "Test 444 from greymory"                    );
-            
-            //AnomalyDetector detector = new AnomalyDetector();
-            //detector.run(args);
-        } catch (MessagingException ex) {
+            AnomalyDetector detector = new AnomalyDetector();
+            detector.run(args);
+        } catch (Exception ex) {
             System.out.println(ex.toString());
         }
     }
