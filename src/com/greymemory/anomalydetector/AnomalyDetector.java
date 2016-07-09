@@ -9,6 +9,8 @@ import com.greymemory.anomaly.DataSourceCSV;
 import com.greymemory.anomaly.AnomalyConsumer;
 import com.greymemory.anomaly.IndividualAnomaly;
 import com.greymemory.anomaly.Anomaly;
+import com.greymemory.anomaly.DataSample;
+import com.greymemory.anomaly.DataSource;
 import com.greymemory.evolution.Evolver;
 import com.greymemory.evolution.Gene;
 import com.greymemory.evolution.Individual;
@@ -72,8 +74,8 @@ public class AnomalyDetector implements AnomalyConsumer{
         }
        
         // save the default config
-        config.setProperty("input_file", "./data/http_response_ratio.csv");
-        config.setProperty("output_file", "./anomaly_log.csv");
+        //config.setProperty("input_file", "./data/http_response_ratio.csv");
+        //config.setProperty("output_file", "./anomaly_log.csv");
         config.setProperty("threshold", "0.95");
         
         configFile = new File(config_file);
@@ -144,7 +146,7 @@ training_period = 5803.479980
         individual.genome.genes.add(new Gene("window", 1f, 3f, 2f));
         individual.genome.genes.add(new Gene("forgetting_rate", 1000f, 2000f, 200));
         
-        individual.genome.genes.add(new Gene("anomaly_window", 1000f, 3000f, 2600));
+        individual.genome.genes.add(new Gene("anomaly_window", 1000f, 3000f, 600));//2600));
         
         individual.genome.genes.add(new Gene("training_period", 10f, 1, 10));
         
@@ -154,62 +156,97 @@ training_period = 5803.479980
     public void monitor(){
         
       
-        System.out.println("Output file: " + config.getProperty("output_file"));
-        System.out.println("Monitoring file: " + config.getProperty("input_file"));
+        //System.out.println("Output file: " + config.getProperty("output_file"));
+        //System.out.println("Monitoring file: " + config.getProperty("input_file"));
         
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DATE, -60);
-        Date start_from = cal.getTime();
+        Date start_from = UTC_time.GetUTCdatetimeAsDate();
+        start_from = DataSourceElasticSearch.addMinutesToDate(-2*60, start_from);
         
-        IndividualAnomaly individual = 
-                CreateHTTPResponceIndividual(
-                    config.getProperty("input_file"),
-                    config.getProperty("output_file"), 
-                    start_from, -1);
-        individual.channel = "http_responce";
+        ArrayList<String> target_hosts = new ArrayList<>();
+        for(int i = 1; i < 20; i++){
+            String host = config.getProperty("target_host" + Integer.toString(i));
+            if(host != null && host.length() > 0){
+                target_hosts.add(host);
+                System.out.println("Host " + host);
+            }
+        }
 
-        DataSourceCSV data_source = null;
+        ArrayList<IndividualAnomaly> individuals = new ArrayList<>();
+        ArrayList<DataSource> data_sources = new ArrayList<>();
         try {
-            individual.create_xdm();
-            individual.threshold = Double.parseDouble(config.getProperty("threshold", "0.9"));
-            
-            data_source = new DataSourceCSV(
-                    start_from, 
-                    true, // monitoring
-                    individual.input_file);
-            
-            individual.clear_log();
+            for(String target_host : target_hosts){
 
-            data_source.addListener(individual);
-            
-            individual.addListener(this);
+                IndividualAnomaly individual = 
+                        CreateHTTPResponceIndividual(
+                            "",
+                            target_host + ".csv", 
+                            start_from, -1);
+                individuals.add(individual);
+                individual.channel = "http_responce";
+
+                DataSource data_source = null;
+                individual.create_xdm();
+                individual.threshold = Double.parseDouble(config.getProperty("threshold", "0.9"));
+            /*    
+                data_source = new DataSourceCSV(
+                        start_from, 
+                        true, // monitoring
+                        individual.input_file);
+              */  
+                data_source = new DataSourceElasticSearch(
+                        start_from, 
+                        true, // monitoring
+                        target_host,
+                        config.getProperty("es_host"), 
+                        Integer.parseInt(config.getProperty("es_port")),
+                        config.getProperty("es_user"), 
+                        config.getProperty("es_password")
+                );
+
+                data_sources.add(data_source);
+
+                individual.clear_log();
+
+                data_source.addListener(individual);
+
+                individual.addListener(this);
+            }
 
             System.out.println("Running...");
-            data_source.start();
-            data_source.join();
+            System.out.println(config.getProperty("es_host"));
+            for(DataSource data_source : data_sources){
+                    data_source.start();
+            }
+            
+            for(DataSource data_source : data_sources){
+                    data_source.join();
+            }
+            
+            for(IndividualAnomaly individual : individuals){
+                individual.clear_xdm();
+            }
+        
         } catch (InterruptedException ex) {
             //Logger.getLogger(IndividualAnomaly.class.getName()).log(Level.SEVERE, null, ex);
-            if(data_source != null){
-                try {
+            try {
+                for(DataSource data_source : data_sources){
                     data_source.interrupt();
                     data_source.join();
-                } catch (InterruptedException ex1) {
-                    //Logger.getLogger(IndividualAnomaly.class.getName()).log(Level.SEVERE, null, ex1);
                 }
+            } catch (InterruptedException ex1) {
+                //Logger.getLogger(IndividualAnomaly.class.getName()).log(Level.SEVERE, null, ex1);
             }
         } catch (Exception ex) {
             Logger.getLogger(IndividualAnomaly.class.getName()).log(Level.SEVERE, null, ex);
         } finally{
         }
-                
-        individual.clear_xdm();
         System.out.println("Done.");
     }
     
     public void run(String[] args) {
         
         System.out.println("Copyright (c) 2015 Anton Mazhurin");
-        System.out.println("Anomaly Detector. version 1.1");
+        System.out.println("Greymemory Anomaly Detector. version 1.2");
         
         read_config();
         
@@ -218,10 +255,9 @@ training_period = 5803.479980
         //   System.out.println("Input file: " + args[0]);
         //}
         
-        //send_zmq_message("Grey Memory: testing zmq");
-        //monitor();
+        monitor();
       
-        
+        /*
         ElasticSearch es = new ElasticSearch();
         es.connect(config.getProperty("es_host"), 
             Integer.parseInt(config.getProperty("es_port")),
@@ -230,7 +266,7 @@ training_period = 5803.479980
         Date d = UTC_time.GetUTCdatetimeAsDate();
         float rate = es.get_http_response_rate("bdsmovement.net", d, 1);
         es.disconnect();
-
+*/
     }
 
     /**
@@ -239,7 +275,17 @@ training_period = 5803.479980
     public static void main(String[] args)  {
         
         try {
+            
             AnomalyDetector detector = new AnomalyDetector();
+
+            Anomaly a = new Anomaly();
+            a.anomaly_rate = 0.99f;
+            a.start = true;
+            a.sample = new DataSample();
+            a.sample.date = UTC_time.GetUTCdatetimeAsDate();
+            a.sample.timestamp = a.sample.date.getTime()/1000;
+            detector.send_to_bothound(a, "test_host");
+            
             detector.run(args);
         } catch (Exception ex) {
             System.out.println(ex.toString());
@@ -303,7 +349,7 @@ training_period = 5803.479980
     //private Anomaly anomaly = null;
     
     @Override
-    public void OnAnomaly(Anomaly anomaly) {
+    public void OnAnomaly(Anomaly anomaly, Individual individual, DataSource data_source) {
       /*  
         if(this.anomaly == null){
             // no anomaly state
@@ -325,15 +371,18 @@ training_period = 5803.479980
             }
         }
         */
+    
+        DataSourceElasticSearch ds = (DataSourceElasticSearch)data_source;
+        String host = ds.get_target_host();
         
-        
-        System.out.println("GreyMemory: Anomaly detected(HTTP Responce): " + anomaly.sample.get_date_UTC() + 
+        System.out.println("GreyMemory: Anomaly detected(HTTP Responce): " + 
+                host + "," + anomaly.sample.get_date_UTC() + 
                 ", Rate:" + Double.toString((int)(anomaly.anomaly_rate*100)/100.0)
                  + (anomaly.start ? ", START" : ", STOP"));
         
         send_emails(anomaly);
         
-        send_to_bothound(anomaly);
+        send_to_bothound(anomaly, host);
         
     }
     
@@ -361,7 +410,7 @@ training_period = 5803.479980
         }
     }
     
-    protected void send_to_bothound(Anomaly anomaly){
+    protected void send_to_bothound(Anomaly anomaly, String target_host){
         // do not send emails on events before the launch
         //if(is_date_before_launch(anomaly.sample.date))
         //    return;
@@ -372,6 +421,7 @@ training_period = 5803.479980
             
             // { "message type": "anomaly started", "dnet": STRING, "channel": STRING, "anomaly rate" : FLOAT, "time stamp" : "YYYY-MM-DD HH:MM:SS" }
             root.put("message type", anomaly.start ? "anomaly_started" : "anomaly_stopped");
+            root.put("target_host", target_host);
             root.put("dnet", "");
             root.put("channel", "HTTP_response");
             root.put("anomaly_rate", anomaly.anomaly_rate);
