@@ -25,9 +25,15 @@ public class DataSourceElasticSearch extends DataSource{
     private String password;
     private Calendar calendar;
     private String target_host;
+    int samle_rate_in_minutes = 5;
+    private boolean use_training_mode;
+    
     public String get_target_host(){return target_host;}
             
-    public DataSourceElasticSearch(Date dateStart, boolean monitoring,
+    public DataSourceElasticSearch(Date dateStart, 
+            int samle_rate_in_minutes,
+            boolean monitoring,
+            boolean use_training_mode,
             String target_host,
             String host, int port, String user, String password) {
         super(dateStart, monitoring);
@@ -36,6 +42,8 @@ public class DataSourceElasticSearch extends DataSource{
         this.port = port;
         this.password = password;
         this.target_host = target_host;
+        this.use_training_mode = use_training_mode;
+        this.samle_rate_in_minutes= samle_rate_in_minutes;
         calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     }
     
@@ -80,12 +88,14 @@ public class DataSourceElasticSearch extends DataSource{
             
             Date dateCurrent = dateStart;
             
-            training_period = true;
+            if(use_training_mode)
+                training_period = true;
             while(true){
-                float rate = es.get_http_response_rate(target_host, dateCurrent, 1);
+                float rate = es.get_http_response_rate(target_host, dateCurrent, 
+                        samle_rate_in_minutes);
                 OnData(get_sample(dateCurrent, rate), this);
                 
-                dateCurrent = addMinutesToDate(1, dateCurrent);
+                dateCurrent = addMinutesToDate(samle_rate_in_minutes, dateCurrent);
                 Date dateNow = UTC_time.GetUTCdatetimeAsDate();
                 if(dateNow.before(dateCurrent)){
                     break;
@@ -100,9 +110,10 @@ public class DataSourceElasticSearch extends DataSource{
                     if(Thread.interrupted())
                         break;
                     Date dateNow = UTC_time.GetUTCdatetimeAsDate();
-                    float rate = es.get_http_response_rate(target_host, dateNow, 1);
-                    OnData(get_sample(dateCurrent, rate), this);
-                    Thread.sleep(60 * 1000);
+                    float rate = es.get_http_response_rate(target_host, dateNow, samle_rate_in_minutes);
+                    System.out.println("Host: " + target_host + ",rate = " + Float.toString(rate));
+                    OnData(get_sample(dateNow, rate), this);
+                    Thread.sleep(samle_rate_in_minutes*60*1000);
                 }
             }
             

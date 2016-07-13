@@ -160,7 +160,7 @@ training_period = 5803.479980
         //System.out.println("Monitoring file: " + config.getProperty("input_file"));
         
         Date start_from = UTC_time.GetUTCdatetimeAsDate();
-        start_from = DataSourceElasticSearch.addMinutesToDate(-2*60, start_from);
+        start_from = DataSourceElasticSearch.addMinutesToDate(-24*60, start_from);
         
         ArrayList<String> target_hosts = new ArrayList<>();
         for(int i = 1; i < 20; i++){
@@ -176,10 +176,11 @@ training_period = 5803.479980
         try {
             for(String target_host : target_hosts){
 
+                String log_file = target_host + ".csv";
                 IndividualAnomaly individual = 
                         CreateHTTPResponceIndividual(
                             "",
-                            target_host + ".csv", 
+                            log_file, 
                             start_from, -1);
                 individuals.add(individual);
                 individual.channel = "http_responce";
@@ -193,9 +194,17 @@ training_period = 5803.479980
                         true, // monitoring
                         individual.input_file);
               */  
+            
+                File f = new File(log_file);
+                boolean use_training_mode = f.exists();
+                
+                int sample_rate_in_minutes = Integer.parseInt(config.getProperty("sample_rate_in_minutes", "5"));
+
                 data_source = new DataSourceElasticSearch(
                         start_from, 
+                        sample_rate_in_minutes,
                         true, // monitoring
+                        use_training_mode,
                         target_host,
                         config.getProperty("es_host"), 
                         Integer.parseInt(config.getProperty("es_port")),
@@ -205,7 +214,7 @@ training_period = 5803.479980
 
                 data_sources.add(data_source);
 
-                individual.clear_log();
+                //individual.clear_log();
 
                 data_source.addListener(individual);
 

@@ -83,7 +83,7 @@ public class ElasticSearch {
             "					\"range\": {" +
             "						\"@timestamp\": {" +
                 
-            "							\"gte\": \"" + queryDate + "||-1m" + "\", "+
+            "							\"gte\": \"" + queryDate + "||-"+Integer.toString(num_minutes)+"m" + "\", "+
             "							\"lte\": \"" + queryDate + "\" "+
                 
             //"                                                     \"gte\": \"now-1m" + "\", "+
@@ -129,7 +129,7 @@ public class ElasticSearch {
             "                { "+
             "                	\"range\": { "+
             "                		\"@timestamp\": { "+
-"					\"gte\": \"" + queryDate + "||-1m" + "\", "+
+"					\"gte\": \"" + queryDate + "||-"+Integer.toString(num_minutes)+"m" + "\", "+
 "					\"lte\": \"" + queryDate + "\" "+
             "                		} "+
             "                	} "+
@@ -143,7 +143,7 @@ public class ElasticSearch {
             "}";
                 
 
-        float rate = 0f;
+        float rate = 1f;
         int num_success = 0;
         int num_total = 0;
         
